@@ -135,6 +135,10 @@ func (e *elasticsearchExporter) pushLogsData(ctx context.Context, ld plog.Logs) 
 						continue
 					}
 
+					// if !consumererror.IsPermanent(err) {
+					err = consumererror.NewLogs(err, ld)
+					// }
+
 					errs = append(errs, err)
 				}
 			}
@@ -142,12 +146,23 @@ func (e *elasticsearchExporter) pushLogsData(ctx context.Context, ld plog.Logs) 
 	}
 
 	if err := mappingModeSessions.Flush(ctx); err != nil {
+		e.set.Logger.Warn("Flush error", zap.Error(err), zap.Bool("is_permanent", consumererror.IsPermanent(err)))
 		if cerr := ctx.Err(); cerr != nil {
 			return cerr
 		}
-		errs = append(errs, err)
+
+		if !consumererror.IsPermanent(err) {
+			e.set.Logger.Info("DEBUG: returning consumererror.NewLogs for queue retry", zap.Error(err))
+			return consumererror.NewLogs(err, ld)
+		}
 	}
-	return errors.Join(errs...)
+	// Per-record errors (e.g. Add failed): return a single retryable error so the queue
+	// persists/retries instead of dropping. errors.Join(errs...) alone is not recognized
+	// as retryable by consumererror.IsPermanent in the queue/retry layer.
+	if len(errs) > 0 {
+		return consumererror.NewLogs(errors.Join(errs...), ld)
+	}
+	return nil
 }
 
 func (e *elasticsearchExporter) pushLogRecord(

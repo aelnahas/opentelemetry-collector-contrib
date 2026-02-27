@@ -17,6 +17,7 @@ import (
 	"go.opentelemetry.io/collector/config/confighttp"
 	"go.opentelemetry.io/collector/config/configopaque"
 	"go.opentelemetry.io/collector/config/configoptional"
+	"go.opentelemetry.io/collector/config/configretry"
 	"go.opentelemetry.io/collector/confmap"
 	"go.opentelemetry.io/collector/exporter/exporterhelper"
 	"go.uber.org/zap"
@@ -79,6 +80,9 @@ type Config struct {
 	Authentication          AuthenticationSettings `mapstructure:",squash"`
 	Discovery               DiscoverySettings      `mapstructure:"discover"`
 	Retry                   RetrySettings          `mapstructure:"retry"`
+	// BackOffConfig configures the collector-level retry (retries before the queue drops data).
+	// When sending_queue has persistent storage, enabling this keeps failed batches in the queue for retry.
+	BackOffConfig configretry.BackOffConfig `mapstructure:"retry_on_failure"`
 
 	// Deprecated: [v0.136.0] This config is now deprecated. Use `sending_queue::batch` instead.
 	// If this config is defined then it will be used to configure sending queue's batch provided

@@ -17,6 +17,7 @@ import (
 	"go.opentelemetry.io/collector/config/configcompression"
 	"go.opentelemetry.io/collector/config/confighttp"
 	"go.opentelemetry.io/collector/config/configoptional"
+	"go.opentelemetry.io/collector/config/configretry"
 	"go.opentelemetry.io/collector/exporter"
 	"go.opentelemetry.io/collector/exporter/exporterhelper"
 	"go.opentelemetry.io/collector/exporter/exporterhelper/xexporterhelper"
@@ -56,6 +57,7 @@ func createDefaultConfig() component.Config {
 	return &Config{
 		QueueBatchConfig: configoptional.Some(qs),
 		ClientConfig:     httpClientConfig,
+		BackOffConfig:    configretry.NewDefaultBackOffConfig(),
 		LogsDynamicID: DynamicIDSettings{
 			Enabled: false,
 		},
@@ -228,6 +230,7 @@ func exporterhelperOptions(
 	return []exporterhelper.Option{
 		exporterhelper.WithStart(start),
 		exporterhelper.WithShutdown(shutdown),
+		exporterhelper.WithRetry(cfg.BackOffConfig),
 		xexporterhelper.WithQueueBatch(cfg.QueueBatchConfig, qbs),
 		// Effectively disable timeout_sender because timeout is enforced in bulk indexer.
 		exporterhelper.WithTimeout(exporterhelper.TimeoutConfig{Timeout: 0}),
